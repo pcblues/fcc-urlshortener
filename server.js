@@ -15,47 +15,61 @@ app.use(express.static('public'))
 var collName='urls'
 var urlPrefix='https://fcc-uurlshortener.glitch.me/'
 var dbName = 'fcc-uurlshortener'
+var fnUrlNum='urlNum'
+var fnUrl='url'
 
 // http://expressjs.com/en/starter/basic-routing.html
 app.get("/new/*", function (request, response) {
   var url = process.env.MONGODB_URL
-  console.log(url)
+  
   var req = request.url
   var requested = req.substring(5)
+  var maxIdx = 1000
   mongo.connect(url,{useNewUrlParser:true},function(err,db) {
     if (err) {response.send(JSON.stringify(err))} 
-    var shortNum = 1000
+
     var dbo=db.db(dbName)
     var coll = dbo.collection(collName)
-    // get max number
-    var urlDoc = coll.find().sort({urlNum:-1}).limit(1)
     // create new url
-    if (isNaN(urlDoc.urlNum)===false) {
-      shortNum = urlDoc.urlNum+1
-    }
     // return link to user
-    var newUrl = 'https://fcc-uurlshortener.glitch.me/'+shortNum
-    var newDocObj = {"urlNum":shortNum,"url":newUrl}
+    coll.find().toArray(function (err,docs) {
+      if(err) throw err
+      console.log(docs.length)
+        for (var c=0;c<docs.length;c++) {
+          console.log(c+' '+docs[c][fnUrlNum])
+          
+          if (docs[c][fnUrlNum]>maxIdx) {
+            maxIdx=docs[c][fnUrlNum]
+          }
+        
+        }
+          maxIdx+=1
     
-    var newDoc= JSON.stringify(newDocObj)
-    console.log(newDoc)
-    
-    var coll = dbo.collection(collName)
-    coll.insert(newDocObj,function(err,data) {
-    if (err) throw err
-      
+        var newDocObj = {"url":requested,"urlNum":maxIdx}
+        var newUrl =""
+        coll.insert(newDocObj,function(err,data) {
+        if (err) throw err
+
+        newUrl=urlPrefix+maxIdx
+        db.close()
+        console.log(newUrl)
+        var newHtml='<html><head><title>Shortened URL</title></head><body><a href="'+
+            newUrl+'" target="_blank">'+newUrl+'</a></body></html>'
+        console.log(newHtml)
+        response.send(newHtml)
+        })
+
     })
-    db.close()
-    response.send('<html><head><title>Shortened URL</title></head><body><a href="'+newUrl+'" target="_blank">'+newUrl+'</a></body></html>')
   })
 })
 
 app.get("/*",function (request,response) {
-  var result=""
+  
   var url = process.env.MONGODB_URL  
   var req = request.url
-  var requested = req.substring(5)
-  console.log(requested)
+  var requested = req.substring(1)
+  
+  if (parseInt(requested)>0) {
   mongo.connect(url,{useNewUrlParser:true},function(err,db) {
     if (err) {
       response.send(JSON.stringify(err))
@@ -64,18 +78,27 @@ app.get("/*",function (request,response) {
     var dbo=db.db(dbName)
     var coll = dbo.collection(collName)
     var urlNum = parseInt(requested)
-    coll.find({urlNum:urlNum}).toArray(
-        function(err,doc) {
-          if (err) throw err
-          result=doc.url
+    console.log(urlNum)
+    coll.find({urlNum:urlNum}).toArray(function(err,docs){
+          if (err) {response.send(JSON.stringify(err))}
+      console.log(docs)
+          var result=""
+          if (docs.length>0) {
+            result=docs[0].url
+            console.log(result)    
+          }
           db.close()
+        if (result==="") {
+            response.send("No URL associated with this link. Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE")
+          } else {
+            response.redirect(result)
+          }  
+    
         })  
-    if (result==="") {
-        response.send("Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE")
-      } else {
-        response.redirect(result)
-      }  
-  })
+    })
+  } else {
+              response.send("Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE")
+  }
 })
 
               
