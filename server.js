@@ -56,7 +56,8 @@ app.get("/new/*", function (request, response) {
         var newHtml='<html><head><title>Shortened URL</title></head><body><a href="'+
             newUrl+'" target="_blank">'+newUrl+'</a></body></html>'
         console.log(newHtml)
-        response.send(newHtml)
+        var newLink={url:newUrl}
+        response.send(JSON.stringify(newLink))
         })
 
     })
@@ -89,15 +90,20 @@ app.get("/*",function (request,response) {
           }
           db.close()
         if (result==="") {
-            response.send("No URL associated with this link. Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE")
+            var errText = "No URL associated with this link. Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE"
+            var resp={error:errText}
+            
+            response.send(JSON.stringify(resp))
           } else {
+            //var resp={url:result}
             response.redirect(result)
           }  
     
         })  
     })
   } else {
-              response.send("Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE")
+    var resp = {error:"Create a new shortened URL with: https://fcc-uurlshortener.glitch.me/new/LONG_URL_HERE"}
+    response.send(JSON.stringify(resp))
   }
 })
 
